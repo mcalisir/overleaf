@@ -1,7 +1,7 @@
 services:
   sharelatex:
-    restart: always
     image: sharelatex/sharelatex
+    restart: always
     depends_on:
       mongo:
         condition: service_healthy
@@ -10,33 +10,20 @@ services:
     stop_grace_period: 60s
     volumes:
       - ~/sharelatex_data:/var/lib/overleaf
-      # Server Pro için gerekli (Community Edition’da genelde gerekmez)
-      # - /var/run/docker.sock:/var/run/docker.sock
     environment:
       OVERLEAF_APP_NAME: Overleaf Community Edition
       OVERLEAF_MONGO_URL: mongodb://mongo/sharelatex
-
-      # Redis (iki isimle kullanılıyor)
       OVERLEAF_REDIS_HOST: redis
       REDIS_HOST: redis
-
       ENABLED_LINKED_FILE_TYPES: "project_file,project_output_file"
       ENABLE_CONVERSIONS: "true"
       EMAIL_CONFIRMATION_DISABLED: "true"
-
-      # Community Edition için sandboxed compiles desteklenmez.
-      # Açık kalırsa compile tarafında sorun çıkarabilir; bu yüzden kapalı bırak.
-      # SANDBOXED_COMPILES: "true"
-      # SANDBOXED_COMPILES_HOST_DIR_COMPILES: "/home/user/sharelatex_data/data/compiles"
-      # SANDBOXED_COMPILES_HOST_DIR_OUTPUT: "/home/user/sharelatex_data/data/output"
-      # DOCKER_RUNNER: "true"
-      # SANDBOXED_COMPILES_SIBLING_CONTAINERS: "true"
     networks:
       - dokploy-network
 
   mongo:
+    image: mongo:8.0
     restart: always
-    image: mongo:6.0
     command: "--replSet overleaf"
     volumes:
       - ~/mongo_data:/data/db
@@ -49,13 +36,13 @@ services:
       test: echo 'db.stats().ok' | mongosh localhost:27017/test --quiet
       interval: 10s
       timeout: 10s
-      retries: 5
+      retries: 10
     networks:
       - dokploy-network
 
   redis:
-    restart: always
     image: redis:6.2
+    restart: always
     volumes:
       - ~/redis_data:/data
     networks:
