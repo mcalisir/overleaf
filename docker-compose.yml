@@ -1,53 +1,61 @@
 services:
   sharelatex:
-    image: sharelatex/sharelatex
+    image: sharelatex/sharelatex:latest
     restart: always
     depends_on:
       mongo:
         condition: service_healthy
       redis:
         condition: service_started
-    stop_grace_period: 60s
+    networks:
+      - dokploy-network
+      - overleaf_net
     volumes:
-      - ~/sharelatex_data:/var/lib/overleaf
+      - overleaf_data:/var/lib/overleaf
     environment:
-      OVERLEAF_APP_NAME: Overleaf Community Edition
-      OVERLEAF_MONGO_URL: mongodb://mongo/sharelatex
-      OVERLEAF_REDIS_HOST: redis
-      REDIS_HOST: redis
+      OVERLEAF_APP_NAME: "Overleaf Community Edition"
+      OVERLEAF_SITE_URL: "https://overleaf.mcalisir.com"
+      OVERLEAF_BEHIND_PROXY: "true"
+      OVERLEAF_SECURE_COOKIE: "true"
+
+      OVERLEAF_MONGO_URL: "mongodb://mongo/sharelatex"
+      OVERLEAF_REDIS_HOST: "redis"
+      REDIS_HOST: "redis"
+
       ENABLED_LINKED_FILE_TYPES: "project_file,project_output_file"
       ENABLE_CONVERSIONS: "true"
       EMAIL_CONFIRMATION_DISABLED: "true"
-    networks:
-      - dokploy-network
 
   mongo:
-    image: mongo:8.0
+    image: mongo:8
     restart: always
-    command: "--replSet overleaf"
-    volumes:
-      - ~/mongo_data:/data/db
-      - ./bin/shared/mongodb-init-replica-set.js:/docker-entrypoint-initdb.d/mongodb-init-replica-set.js
-    environment:
-      MONGO_INITDB_DATABASE: sharelatex
-    extra_hosts:
-      - mongo:127.0.0.1
-    healthcheck:
-      test: echo 'db.stats().ok' | mongosh localhost:27017/test --quiet
-      interval: 10s
-      timeout: 10s
-      retries: 10
+    command: ["--replSet", "rs0", "--bind_ip_all"]
     networks:
-      - dokploy-network
+      - overleaf_net
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.adminCommand(\"ping\").ok' | grep 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
 
   redis:
-    image: redis:6.2
+    image: redis:7
     restart: always
-    volumes:
-      - ~/redis_data:/data
+    command: ["redis-server", "--dir", "/data"]
     networks:
-      - dokploy-network
+      - overleaf_net
+    volumes:
+      - redis_data:/data
 
 networks:
+  overleaf_net:
+    driver: bridge
   dokploy-network:
     external: true
+
+volumes:
+  overleaf_data:
+  mongo_data:
+  redis_data:
