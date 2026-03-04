@@ -4,7 +4,7 @@ services:
     restart: always
     depends_on:
       mongo:
-        condition: service_healthy
+        condition: service_started
       redis:
         condition: service_started
     networks:
@@ -14,20 +14,23 @@ services:
       - overleaf_data:/var/lib/overleaf
     environment:
       OVERLEAF_APP_NAME: "Overleaf Community Edition"
-      OVERLEAF_SITE_URL: "https://overleaf.mcalisir.com"
-      OVERLEAF_BEHIND_PROXY: "true"
-      OVERLEAF_SECURE_COOKIE: "true"
 
-      OVERLEAF_MONGO_URL: "mongodb://mongo/sharelatex"
+      # Dokploy+compose için normal:
+      OVERLEAF_MONGO_URL: "mongodb://mongo:27017/sharelatex?replicaSet=rs0"
       OVERLEAF_REDIS_HOST: "redis"
       REDIS_HOST: "redis"
 
       ENABLED_LINKED_FILE_TYPES: "project_file,project_output_file"
       ENABLE_CONVERSIONS: "true"
       EMAIL_CONFIRMATION_DISABLED: "true"
+      OVERLEAF_SITE_URL: "https://overleaf.mcalisir.com"
+
+      # Reverse proxy arkasında olduğun için:
+      OVERLEAF_BEHIND_PROXY: "true"
+      OVERLEAF_SECURE_COOKIE: "true"
 
   mongo:
-    image: mongo:8
+    image: mongo:8.0
     restart: always
     command: ["--replSet", "rs0", "--bind_ip_all"]
     networks:
@@ -41,13 +44,13 @@ services:
       retries: 20
 
   redis:
-    image: redis:7
+    image: redis:7.2
     restart: always
-    command: ["redis-server", "--dir", "/data"]
     networks:
       - overleaf_net
     volumes:
       - redis_data:/data
+    command: ["redis-server", "--appendonly", "no", "--save", "60", "1000", "--dir", "/data"]
 
 networks:
   overleaf_net:
