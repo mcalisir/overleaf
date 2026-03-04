@@ -1,6 +1,7 @@
 services:
   sharelatex:
     image: sharelatex/sharelatex:latest
+    container_name: sharelatex
     restart: always
     depends_on:
       mongo:
@@ -14,26 +15,21 @@ services:
       - overleaf_data:/var/lib/overleaf
     environment:
       OVERLEAF_APP_NAME: "Overleaf Community Edition"
-      
-      # MongoDB & Redis Ayarları
+      # Replica set modunda bağlantı dizesi tam olmalıdır:
       OVERLEAF_MONGO_URL: "mongodb://mongo:27017/sharelatex?replicaSet=rs0"
       OVERLEAF_REDIS_HOST: "redis"
       REDIS_HOST: "redis"
-
-      # Özellik Ayarları
       ENABLED_LINKED_FILE_TYPES: "project_file,project_output_file"
       ENABLE_CONVERSIONS: "true"
       EMAIL_CONFIRMATION_DISABLED: "true"
       OVERLEAF_SITE_URL: "https://overleaf.mcalisir.com"
-
-      # Reverse Proxy (Dokploy/Traefik/Nginx) Ayarları
       OVERLEAF_BEHIND_PROXY: "true"
       OVERLEAF_SECURE_COOKIE: "true"
 
   mongo:
-    image: mongo:8.0
+    image: mongo:8
+    container_name: mongo
     restart: always
-    # Replica Set başlatma komutu
     command: ["--replSet", "rs0", "--bind_ip_all"]
     networks:
       - overleaf_net
@@ -43,17 +39,16 @@ services:
       test: ["CMD-SHELL", "mongosh --quiet --eval 'db.adminCommand(\"ping\").ok' | grep 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 20s
+      retries: 5
 
   redis:
-    image: redis:7.2
+    image: redis:7
+    container_name: redis
     restart: always
     networks:
       - overleaf_net
     volumes:
       - redis_data:/data
-    command: ["redis-server", "--appendonly", "yes"]
 
 networks:
   overleaf_net:
